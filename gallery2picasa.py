@@ -25,6 +25,7 @@ FLAGS.AddFlag('u', 'username', 'The Google username to use')
 FLAGS.AddFlag('p', 'password', 'The Google password to use')
 FLAGS.AddFlag('g', 'gallery_prefix', 'Gallery album directory',
     '/var/local/g2data/albums')
+FLAGS.AddFlag('z', 'album', 'Album to upload, or "all"', 'all')
 
 def main(argv):
   appname = argv[0]
@@ -58,6 +59,14 @@ def main(argv):
 
     for album in albums:
       if album.id() not in photos_by_album:
+        continue
+
+      if FLAGS.album != "all" and FLAGS.album != album.title():
+        continue
+
+      yesno = raw_input("Upload '%s: %s' [yN]?: " % (
+          album.full_path(albums), album.title())).lower()
+      if not yesno.startswith('y'):
         continue
 
       # find a reasonable date for album
