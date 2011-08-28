@@ -19,8 +19,8 @@ FLAGS.AddFlag('t', 'table_prefix', 'The table prefix to use', 'g2_')
 FLAGS.AddFlag('f', 'field_prefix', 'The field prefix to use', 'g_')
 FLAGS.AddFlag('u', 'username', 'The Google username to use')
 FLAGS.AddFlag('p', 'password', 'The Google password to use')
-FLAGS.AddFlag('g', 'gallery_prefix', 'Prefix for gallery photos',
-    '/var/local/g2data')
+FLAGS.AddFlag('g', 'gallery_prefix', 'Gallery album directory',
+    '/var/local/g2data/albums')
 
 def main(argv):
   appname = argv[0]
@@ -64,8 +64,8 @@ def main(argv):
             photo.path_component(), photo.summary(), photo.keywords())
 
         keywords = ', '.join(photo.keywords().split())
-        filename = '%s/albums/%s/%s' % (
-            FLAGS.gallery_prefix, album.title(), photo.path_component())
+        filename = '%s/%s/%s' % (
+            FLAGS.gallery_prefix, album.full_path(albums), photo.path_component())
         pws.InsertPhotoSimple(a.GetFeedLink().href, photo.path_component(),
             photo.summary(), filename, 'image/jpeg', keywords)
             

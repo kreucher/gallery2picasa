@@ -93,11 +93,12 @@ class PhotoItem(ChildEntity, FileSystemEntity):
     return self.__height
 
 
-class AlbumItem(Item):
+class AlbumItem(ChildEntity, FileSystemEntity):
   TABLE_NAME = 'AlbumItem'
 
   def __init__(self, db, id):
-    Item.__init__(self, db, id)
+    ChildEntity.__init__(self, db, id)
+    FileSystemEntity.__init__(self, db, id)
     (theme,) = db.FieldsForItem(
         id, AlbumItem.TABLE_NAME, 'theme')
     self.__theme = theme
@@ -107,3 +108,10 @@ class AlbumItem(Item):
 
   def theme(self):
     return self.__theme
+
+  def full_path(self, albums):
+    if self.path_component() == None:
+      return "";
+
+    parent = filter(lambda x: x.id() == self.parent_id(), albums)[0]
+    return parent.full_path(albums) + '/' + self.path_component()
