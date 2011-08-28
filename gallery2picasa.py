@@ -9,7 +9,6 @@ from datetime import datetime
 import Image
 import gdata.photos
 import gdata.photos.service
-import getopt
 import sys
 import time
 import os
