@@ -5,10 +5,14 @@ from modules import flags
 from modules import items
 from modules import utils
 
+from datetime import datetime
+import Image
 import gdata.photos
 import gdata.photos.service
 import getopt
 import sys
+import time
+import os
 
 FLAGS = flags.FLAGS
 FLAGS.AddFlag('b', 'dbuser', 'The username to use for the database')
@@ -56,8 +60,23 @@ def main(argv):
       if album.id() not in photos_by_album:
         continue
 
-      print 'CREATING ALBUM [%s] [%s]' % (album.title(), album.summary())
-      a = pws.InsertAlbum(album.title(), album.summary())
+      # find a reasonable date for album
+      album_path = FLAGS.gallery_prefix + '/' + album.full_path(albums)
+      files = os.listdir(album_path)
+      timestamp = None
+      dt = datetime.now()
+      if len(files) > 0:
+        i = Image.open(album_path + '/' + files[0])
+	exifdate = i._getexif().get(306)
+	dt = datetime.strptime(exifdate, "%Y:%m:%d %H:%M:%S")
+	timestamp = str(int(time.mktime(dt.timetuple()) * 1000))
+      print 'CREATING ALBUM [%s] [%s] [%s (%s)]' % (
+         album.title(), album.summary(), dt.ctime(), timestamp)
+      a = pws.InsertAlbum(
+          title=album.title(),
+	  summary=album.summary(),
+	  access="private",
+	  timestamp=timestamp)
 
       for photo in photos_by_album[album.id()]:
 	title = photo.title()
@@ -69,8 +88,7 @@ def main(argv):
             photo.path_component(), comment, photo.keywords())
 
         keywords = ', '.join(photo.keywords().split())
-        filename = '%s/%s/%s' % (
-            FLAGS.gallery_prefix, album.full_path(albums), photo.path_component())
+        filename = '%s/%s' % (album_path, photo.path_component())
         pws.InsertPhotoSimple(a.GetFeedLink().href, photo.path_component(),
             comment, filename, 'image/jpeg', keywords)
 
