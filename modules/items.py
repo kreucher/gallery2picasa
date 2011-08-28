@@ -17,10 +17,10 @@ class Item(object):
         id, Item.TABLE_NAME, 'description', 'keywords', 'summary', 'title')
 
     self.__description = utils.HtmlUnescape(
-        (description, '')[description is None])
-    self.__keywords = utils.HtmlUnescape((keywords, '')[keywords is None])
-    self.__summary = utils.HtmlUnescape((summary, '')[summary is None])
-    self.__title = utils.HtmlUnescape((title, '')[title is None])
+        (description, '')[description is None]).decode('latin-1')
+    self.__keywords = utils.HtmlUnescape((keywords, '')[keywords is None]).decode('latin-1')
+    self.__summary = utils.HtmlUnescape((summary, '')[summary is None]).decode('latin-1')
+    self.__title = utils.HtmlUnescape((title, '')[title is None]).decode('latin-1')
 
   def __str__(self):
     return "%s: title='%s' summary='%s' description='%s' keywords='%s'" % (
