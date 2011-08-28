@@ -28,88 +28,93 @@ FLAGS.AddFlag('g', 'gallery_prefix', 'Gallery album directory',
 FLAGS.AddFlag('z', 'album', 'Album to upload, or "all"', 'all')
 
 def main(argv):
-  appname = argv[0]
+    appname = argv[0]
 
-  try:
-    argv = FLAGS.Parse(argv[1:])
-  except flags.FlagParseError, e:
-    utils.Usage(appname, e.usage(), e.message())
-    sys.exit(1)
+    try:
+        argv = FLAGS.Parse(argv[1:])
+    except flags.FlagParseError, e:
+        utils.Usage(appname, e.usage(), e.message())
+        sys.exit(1)
 
-  print 'Connecting to %s on %s...' % (FLAGS.database, FLAGS.hostname)
-  gdb = db.Database(FLAGS.dbuser, FLAGS.dbpass, FLAGS.database,
-      FLAGS.hostname, FLAGS.table_prefix, FLAGS.field_prefix)
+    print 'Connecting to %s on %s...' % (FLAGS.database, FLAGS.hostname)
+    gdb = db.Database(FLAGS.dbuser, FLAGS.dbpass, FLAGS.database,
+            FLAGS.hostname, FLAGS.table_prefix, FLAGS.field_prefix)
 
-  print 'Connecting to PicasaWeb using %s...' % (FLAGS.username)
-  pws = gdata.photos.service.PhotosService()
-  pws.ClientLogin(FLAGS.username, FLAGS.password)
+    print 'Connecting to PicasaWeb using %s...' % (FLAGS.username)
+    pws = gdata.photos.service.PhotosService()
+    pws.ClientLogin(FLAGS.username, FLAGS.password)
 
-  try:
-    print 'Getting a list of Gallery albums...',
-    albums = []
-    album_ids = gdb.ItemIdsForTable(items.AlbumItem.TABLE_NAME)
-    print 'found %s, loading...' % (len(album_ids))
-    for id in album_ids:
-      albums.append(items.AlbumItem(gdb, id))
+    try:
+      print 'Getting a list of Gallery albums...',
+      albums = []
+      album_ids = gdb.ItemIdsForTable(items.AlbumItem.TABLE_NAME)
+      print 'found %s, loading...' % (len(album_ids))
+      for id in album_ids:
+          albums.append(items.AlbumItem(gdb, id))
 
-    print 'Finding photos in albums...',
-    photos_by_album = {}
-    photo_ids = gdb.ItemIdsForTable(items.PhotoItem.TABLE_NAME)
-    print 'found %s, loading...' % (len(photo_ids))
-    for id in photo_ids:
-      photo = items.PhotoItem(gdb, id)
-      if photo.parent_id() not in photos_by_album:
-        photos_by_album[photo.parent_id()] = []
-        print "%d..." % reduce(lambda sum, x: len(x) + sum, photos_by_album.values(), 0)
+      print 'Loading photos in albums:                   ',
+      photos_by_album = {}
+      photo_ids = gdb.ItemIdsForTable(items.PhotoItem.TABLE_NAME)
+      for id in photo_ids:
+          photo = items.PhotoItem(gdb, id)
+          if photo.parent_id() not in photos_by_album:
+              photos_by_album[photo.parent_id()] = []
+              print '\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08%6d of %6d' % (
+                      reduce(lambda sum, x: len(x) + sum,
+                          photos_by_album.values(), 0),
+                      len(photo_ids)),
+              sys.stdout.flush()
+          photos_by_album[photo.parent_id()].append(photo)
 
-      photos_by_album[photo.parent_id()].append(photo)
+      print '\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08done! (%d)             \n' % len(photo_ids)
 
-    for album in albums:
-      if album.id() not in photos_by_album:
-        continue
+      for album in albums:
+          if album.id() not in photos_by_album:
+              continue
 
-      if FLAGS.album != "all" and FLAGS.album != album.title():
-        continue
+          if FLAGS.album != "all" and FLAGS.album != album.title():
+              continue
 
-      yesno = raw_input("Upload '%s: %s' [yN]?: " % (
-          album.full_path(albums), album.title())).lower()
-      if not yesno.startswith('y'):
-        continue
+          yesno = raw_input("Upload '%s: %s' [yN]?: " % (
+              album.full_path(albums), album.title())).lower()
+          if not yesno.startswith('y'):
+              continue
 
-      # find a reasonable date for album
-      album_path = FLAGS.gallery_prefix + '/' + album.full_path(albums)
-      files = os.listdir(album_path)
-      timestamp = None
-      dt = datetime.now()
-      if len(files) > 0:
-        i = Image.open(album_path + '/' + files[0])
-	exifdate = i._getexif().get(306)
-	dt = datetime.strptime(exifdate, "%Y:%m:%d %H:%M:%S")
-	timestamp = str(int(time.mktime(dt.timetuple()) * 1000))
-      print 'CREATING ALBUM [%s] [%s] [%s (%s)]' % (
-         album.title(), album.summary(), dt.ctime(), timestamp)
-      a = pws.InsertAlbum(
-          title=album.title(),
-	  summary=album.summary(),
-	  access="private",
-	  timestamp=timestamp)
+          # find a reasonable date for album
+          album_path = FLAGS.gallery_prefix + '/' + album.full_path(albums)
+          files = os.listdir(album_path)
+          dt = datetime.now()
+          if len(files) > 0:
+              i = Image.open(album_path + '/' + files[0])
+              exifdate = i._getexif().get(306)
+              dt = datetime.strptime(exifdate, "%Y:%m:%d %H:%M:%S")
+          timestamp = str(int(time.mktime(dt.timetuple()) * 1000))
+          print 'CREATING ALBUM [%s] [%s] [%s (%s)]' % (
+                  album.title(), album.summary(), dt.ctime(), timestamp)
+          a = pws.InsertAlbum(
+                  title=album.title(),
+                  summary=album.summary(),
+                  access="private",
+                  timestamp=timestamp)
 
-      for photo in photos_by_album[album.id()]:
-	title = photo.title()
-	if (photo.path_component().startswith(photo.title())):
-	  title = ''
-        non_empty = filter(lambda x: len(x) > 0, (title, photo.summary(), photo.description()))
-	comment = "; ".join(non_empty)
-        print '\tCREATING PHOTO [%s] [%s] [%s]' % (
-            photo.path_component(), comment, photo.keywords())
+          for photo in photos_by_album[album.id()]:
+              title = photo.title()
+          if (photo.path_component().startswith(photo.title())):
+              title = ''
+          non_empty = filter(lambda x: len(x) > 0,
+                  (title, photo.summary(), photo.description()))
+          comment = "; ".join(non_empty)
+          print '\tCREATING PHOTO [%s] [%s] [%s]' % (
+                  photo.path_component(), comment, photo.keywords())
 
-        keywords = ', '.join(photo.keywords().split())
-        filename = '%s/%s' % (album_path, photo.path_component())
-        pws.InsertPhotoSimple(a.GetFeedLink().href, photo.path_component(),
-            comment, filename, 'image/jpeg', keywords)
+          keywords = ', '.join(photo.keywords().split())
+          filename = '%s/%s' % (album_path, photo.path_component())
+          pws.InsertPhotoSimple(a.GetFeedLink().href,
+                  photo.path_component(), comment, filename,
+                  'image/jpeg', keywords)
 
-  finally:
-    gdb.close()
+    finally:
+        gdb.close()
 
 if __name__ == '__main__':
-  main(sys.argv)
+    main(sys.argv)
