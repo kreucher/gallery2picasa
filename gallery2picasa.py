@@ -36,24 +36,31 @@ def main(argv):
     utils.Usage(appname, e.usage(), e.message())
     sys.exit(1)
 
+  print 'Connecting to %s on %s...' % (FLAGS.database, FLAGS.hostname)
   gdb = db.Database(FLAGS.dbuser, FLAGS.dbpass, FLAGS.database,
       FLAGS.hostname, FLAGS.table_prefix, FLAGS.field_prefix)
 
+  print 'Connecting to PicasaWeb using %s...' % (FLAGS.username)
   pws = gdata.photos.service.PhotosService()
   pws.ClientLogin(FLAGS.username, FLAGS.password)
 
   try:
+    print 'Getting a list of Gallery albums...',
     albums = []
     album_ids = gdb.ItemIdsForTable(items.AlbumItem.TABLE_NAME)
+    print 'found %s, loading...' % (len(album_ids))
     for id in album_ids:
       albums.append(items.AlbumItem(gdb, id))
 
+    print 'Finding photos in albums...',
     photos_by_album = {}
     photo_ids = gdb.ItemIdsForTable(items.PhotoItem.TABLE_NAME)
+    print 'found %s, loading...' % (len(photo_ids))
     for id in photo_ids:
       photo = items.PhotoItem(gdb, id)
       if photo.parent_id() not in photos_by_album:
         photos_by_album[photo.parent_id()] = []
+        print "%d..." % reduce(lambda sum, x: len(x) + sum, photos_by_album.values(), 0)
 
       photos_by_album[photo.parent_id()].append(photo)
 
