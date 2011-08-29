@@ -93,7 +93,8 @@ def main(argv):
           if len(files) > 0:
               i = Image.open(album_path + '/' + files[0])
               exifdate = i._getexif().get(306)
-              dt = datetime.strptime(exifdate, "%Y:%m:%d %H:%M:%S")
+              if exifdate != None:
+                  dt = datetime.strptime(exifdate, "%Y:%m:%d %H:%M:%S")
           timestamp = str(int(time.mktime(dt.timetuple()) * 1000))
           print 'CREATING ALBUM [%s] [%s] [%s (%s)]' % (
                   album.title(), album.summary(), dt.ctime(), timestamp)
