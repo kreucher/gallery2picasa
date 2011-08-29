@@ -106,19 +106,19 @@ def main(argv):
 
           for photo in photos_by_album[album.id()]:
               title = photo.title()
-          if (photo.path_component().startswith(photo.title())):
-              title = ''
-          non_empty = filter(lambda x: len(x) > 0,
-                  (title, photo.summary(), photo.description()))
-          comment = "; ".join(non_empty)
-          print '\tCREATING PHOTO [%s] [%s] [%s]' % (
-                  photo.path_component(), comment, photo.keywords())
+              if (photo.path_component().startswith(photo.title())):
+                  title = ''
+              non_empty = filter(lambda x: len(x) > 0,
+                      (title, photo.summary(), photo.description()))
+              comment = "; ".join(non_empty)
+              print '\tCREATING PHOTO [%s] [%s] [%s]' % (
+                      photo.path_component(), comment, photo.keywords())
 
-          keywords = ', '.join(photo.keywords().split())
-          filename = '%s/%s' % (album_path, photo.path_component())
-          pws.InsertPhotoSimple(a.GetFeedLink().href,
-                  photo.path_component(), comment, filename,
-                  'image/jpeg', keywords)
+              keywords = ', '.join(photo.keywords().split())
+              filename = '%s/%s' % (album_path, photo.path_component())
+              pws.InsertPhotoSimple(a.GetFeedLink().href,
+                      photo.path_component(), comment, filename,
+                      'image/jpeg', keywords)
 
     finally:
         gdb.close()
