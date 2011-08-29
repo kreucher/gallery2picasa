@@ -25,6 +25,7 @@ FLAGS.AddFlag('p', 'password', 'The Google password to use')
 FLAGS.AddFlag('g', 'gallery_prefix', 'Gallery album directory',
     '/var/local/g2data/albums')
 FLAGS.AddFlag('z', 'album', 'Album to upload, or "all"', 'all')
+FLAGS.AddFlag('l', 'list', '"yes" to not upload, just list albums', False)
 
 def main(argv):
     appname = argv[0]
@@ -69,6 +70,12 @@ def main(argv):
 
       for album in albums:
           if album.id() not in photos_by_album:
+              continue
+
+          if FLAGS.list != False:
+              print 'ALBUM [%s] [%s] (%d photos)' % (
+                      album.full_path(albums), album.title(),
+                      len(photos_by_album[album.id()]))
               continue
 
           if FLAGS.album != "all" and FLAGS.album != album.title():
