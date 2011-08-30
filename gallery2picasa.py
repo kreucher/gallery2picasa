@@ -6,6 +6,8 @@ from modules import items
 from modules import utils
 
 from datetime import datetime
+from libxmp import *
+import libxmp
 import Image
 import gdata.photos
 import gdata.photos.service
@@ -25,7 +27,7 @@ FLAGS.AddFlag('p', 'password', 'The Google password to use')
 FLAGS.AddFlag('g', 'gallery_prefix', 'Gallery album directory',
     '/var/local/g2data/albums')
 FLAGS.AddFlag('z', 'album', 'Album to upload, or "all"', 'all')
-FLAGS.AddFlag('l', 'list', '"yes" to not upload, just list albums', False)
+FLAGS.AddFlag('m', 'mode', 'upload, caption2xmp or list', 'upload')
 
 def main(argv):
     appname = argv[0]
@@ -72,7 +74,7 @@ def main(argv):
           if album.id() not in photos_by_album:
               continue
 
-          if FLAGS.list != False:
+          if FLAGS.mode == 'list':
               print 'ALBUM [%s] [%s] (%d photos)' % (
                       album.full_path(albums), album.title(),
                       len(photos_by_album[album.id()]))
@@ -81,8 +83,8 @@ def main(argv):
           if FLAGS.album != "all" and FLAGS.album != album.title():
               continue
 
-          yesno = raw_input("Upload '%s: %s' [yN]?: " % (
-              album.full_path(albums), album.title())).lower()
+          yesno = raw_input("Perform action '%s' on '%s: %s' [yN]?: " % (
+              FLAGS.mode, album.full_path(albums), album.title())).lower()
           if not yesno.startswith('y'):
               continue
 
@@ -96,13 +98,14 @@ def main(argv):
               if exifdate != None:
                   dt = datetime.strptime(exifdate, "%Y:%m:%d %H:%M:%S")
           timestamp = str(int(time.mktime(dt.timetuple()) * 1000))
-          print 'CREATING ALBUM [%s] [%s] [%s (%s)]' % (
-                  album.title(), album.summary(), dt.ctime(), timestamp)
-          a = pws.InsertAlbum(
-                  title=album.title(),
-                  summary=album.summary(),
-                  access="private",
-                  timestamp=timestamp)
+          if FLAGS.mode == "upload":
+              print 'CREATING ALBUM [%s] [%s] [%s (%s)]' % (
+                      album.title(), album.summary(), dt.ctime(), timestamp)
+              a = pws.InsertAlbum(
+                      title=album.title(),
+                      summary=album.summary(),
+                      access="private",
+                      timestamp=timestamp)
 
           for photo in photos_by_album[album.id()]:
               title = photo.title()
@@ -111,14 +114,29 @@ def main(argv):
               non_empty = filter(lambda x: len(x) > 0,
                       (title, photo.summary(), photo.description()))
               comment = "; ".join(non_empty)
-              print '\tCREATING PHOTO [%s] [%s] [%s]' % (
-                      photo.path_component(), comment, photo.keywords())
-
               keywords = ', '.join(photo.keywords().split())
               filename = '%s/%s' % (album_path, photo.path_component())
-              pws.InsertPhotoSimple(a.GetFeedLink().href,
-                      photo.path_component(), comment, filename,
-                      'image/jpeg', keywords)
+
+              if FLAGS.mode == 'caption2xmp':
+                  if comment == "":
+                      continue
+                  print '\tUPDATING PHOTO [%s] [%s] [%s]' % (
+                          photo.path_component(), comment, photo.keywords())
+                  xmpfile = XMPFiles(file_path=filename, open_forupdate=True)
+                  xmp = xmpfile.get_xmp()
+                  try:
+                      xmp.set_property(libxmp.consts.XMP_NS_DC,
+                              'description', comment)
+                      xmpfile.put_xmp(xmp)
+                  except:
+                      print "\t\tfailed :("
+                  xmpfile.close_file()
+              elif FLAGS.mode == 'upload':
+                  print '\tCREATING PHOTO [%s] [%s] [%s]' % (
+                          photo.path_component(), comment, photo.keywords())
+                  pws.InsertPhotoSimple(a.GetFeedLink().href,
+                          photo.path_component(), comment, filename,
+                          'image/jpeg', keywords)
 
     finally:
         gdb.close()
